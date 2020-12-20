@@ -3,7 +3,7 @@ Description=Minecraft Server %i
 After=network.target
 
 [Service]
-WorkingDirectory=/opt/minecraft/%i
+WorkingDirectory=/usr/local/share/minecraft/%i
 
 PrivateUsers=true
 # Users Database is not available for within the unit, only root and minecraft is available, everybody else is nobody
@@ -32,12 +32,12 @@ ProtectControlGroups=true
 # Set default memory values
 Environment="MCMINMEM=512M" "MCMAXMEM=1024M" "SHUTDOWN_DELAY=5" "POST_SHUTDOWN_DELAY=10"
 # Change memory values in environment file
-EnvironmentFile=-/opt/minecraft/%i/server.conf
+EnvironmentFile=-/usr/local/share/minecraft/%i/server.conf
 
 # Uncomment this to fix screen on RHEL 8
 #ExecStartPre=+/bin/sh -c 'chmod 777 /run/screen'
 
-ExecStart=/bin/sh -c \
+ExecStart=/usr/bin/tmux new-session -A -s mc-%i -n %i /bin/sh -c \
     'find -L . \
       -maxdepth 1 \
       -type f \
@@ -45,7 +45,6 @@ ExecStart=/bin/sh -c \
       -print0 \
       -quit \
     | xargs -0 -I{} \
-      /usr/bin/screen -DmS mc-%i \
         /usr/bin/java \
           -server \
           -Xms${MCMINMEM} \
@@ -58,12 +57,20 @@ ExecStart=/bin/sh -c \
           -jar {} \
           nogui'
 
-ExecReload=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "reload"\\015'
+ExecReload=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z stuff "reload" Enter
+ExecReload=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
+ExecReload=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
+ExecReload=/usr/bin/tmux attach-session -t 'mc-%i'
 
-ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "say SERVER SHUTTING DOWN. Saving map..."\\015'
+ExecStop=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z  stuff "say SERVER SHUTTING DOWN. Saving map..." Enter
+ExecStop=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
+ExecStop=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
+ExecStop=/usr/bin/tmux attach-session -xt 'mc-%i'
 ExecStop=/bin/sh -c '/bin/sleep ${SHUTDOWN_DELAY}'
-ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "save-all"\\015'
-ExecStop=/usr/bin/screen -p 0 -S mc-%i -X eval 'stuff "stop"\\015'
+ExecStop=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z stuff "save-all" Enter C-z stuff "stop" Enter
+ExecStop=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
+ExecStop=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
+ExecStop=/usr/bin/tmux attach-session -xt 'mc-%i'
 ExecStop=/bin/sh -c '/bin/sleep ${POST_SHUTDOWN_DELAY}'
 
 Restart=on-failure
@@ -90,4 +97,3 @@ WantedBy=multi-user.target
 # To change specific server memory assignment, create file /opt/minecraft/XX/server.conf (where XX is your server name) and add below lines:
 # MCMINMEM=512M
 # MCMAXMEM=2048M
-
