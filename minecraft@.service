@@ -45,7 +45,7 @@ ExecStart=/bin/sh -c \
       -print0 \
       -quit \
     | xargs -0 -I{} \
-        /usr/bin/tmux new-session -A -s mc-%i -n %i /usr/bin/java \
+        /usr/bin/tmux new-session -Ad -s minecraft -n %i /usr/bin/java \
           -server \
           -Xms${MCMINMEM} \
           -Xmx${MCMAXMEM} \
@@ -57,21 +57,30 @@ ExecStart=/bin/sh -c \
           -jar {} \
           nogui'
 
-ExecReload=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z stuff "reload" Enter
-ExecReload=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
-ExecReload=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
-ExecReload=/usr/bin/tmux attach-session -t 'mc-%i'
+ExecReload=/bin/sh -c 'tmux \
+  attach-session -t "minecraft" \\n\
+  select-pane -t "inecraft:%i.0" \\n\
+  select-window -t "minecraft:%i" \\n\
+  send-keys -t "minecraft:%i.0" C-z stuff "reload" Enter \\n\
+  detach-client -s "minecraft" \\n\
+'
 
-ExecStop=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z  stuff "say SERVER SHUTTING DOWN. Saving map..." Enter
-ExecStop=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
-ExecStop=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
-ExecStop=/usr/bin/tmux attach-session -xt 'mc-%i'
-ExecStop=/bin/sh -c '/bin/sleep ${SHUTDOWN_DELAY}'
-ExecStop=/usr/bin/tmux send-keys -t 'mc-%i:mc-%i.0' C-z stuff "save-all" Enter C-z stuff "stop" Enter
-ExecStop=/usr/bin/tmux select-pane -t 'mc-%i:mc-%i.0'
-ExecStop=/usr/bin/tmux select-window -t 'mc-%i:mc-%i'
-ExecStop=/usr/bin/tmux attach-session -xt 'mc-%i'
-ExecStop=/bin/sh -c '/bin/sleep ${POST_SHUTDOWN_DELAY}'
+ExecStop=/bin/sh -c '\
+tmux \
+  attach-session -t "minecraft" \
+  select-pane -t "minecraft:%i.0" \\n\
+  select-window -t "minecraft:%i" \\n\
+  send-keys -t "minecraft:%i.0" C-z  stuff "say SERVER SHUTTING DOWN. Saving map..." Enter \\n\
+  detach-client -s "minecraft" \\n\
+;sleep ${SHUTDOWN_DELAY} \
+;tmux \
+  attach-session -t "minecraft" \\n\
+  select-pane -t "minecraft:%i.0" \\n\
+  select-window -t "minecraft:%i" \\n\
+  send-keys -t "minecraft:%i.0" C-z stuff "save-all" Enter C-z stuff "stop" Enter \\n\
+  detach-client -s "minecraft" \\n\
+;sleep ${POST_SHUTDOWN_DELAY} \
+'
 
 Restart=on-failure
 RestartSec=60s
