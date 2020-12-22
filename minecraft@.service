@@ -37,7 +37,7 @@ EnvironmentFile=-/usr/local/share/minecraft/%i/server.conf
 # Uncomment this to fix screen on RHEL 8
 #ExecStartPre=+/bin/sh -c 'chmod 777 /run/screen'
 
-ExecStart=/usr/bin/tmux new-session -A -s mc-%i -n %i /bin/sh -c \
+ExecStart=/bin/sh -c \
     'find -L . \
       -maxdepth 1 \
       -type f \
@@ -45,7 +45,7 @@ ExecStart=/usr/bin/tmux new-session -A -s mc-%i -n %i /bin/sh -c \
       -print0 \
       -quit \
     | xargs -0 -I{} \
-        /usr/bin/java \
+        /usr/bin/tmux new-session -A -s mc-%i -n %i /usr/bin/java \
           -server \
           -Xms${MCMINMEM} \
           -Xmx${MCMAXMEM} \
